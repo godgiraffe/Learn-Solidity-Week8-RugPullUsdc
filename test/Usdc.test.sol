@@ -98,6 +98,39 @@ contract UsdcTest is Test {
         vm.stopPrank();
     }
 
+    // 設成 uint256 的話， totalSupply 會有溢位的錯誤，所以用 uint128 測
+    function testWhiteListMint(uint128 _amount) public {
+        // 升級合約
+        vm.startPrank(usdc_admin);
+        upgrade();
+        vm.stopPrank();
+
+        // 添加白名單
+        vm.startPrank(usdc_owner);
+        usdcv3.addWhiteList(w_user1);
+        usdcv3.addWhiteList(w_user2);
+        usdcv3.addWhiteList(w_user3);
+        vm.stopPrank();
+
+        uint256 userBalance;
+        // 多 mint 個幾次，檢查有無錯誤
+        for (uint i = 0; i < 10; i++) {
+          userBalance = usdcv3.balanceOf(w_user1);
+          vm.prank(w_user1);
+          usdcv3.mint(_amount);
+          // 剛 mint 了 _amount 數量，檢查是否有 mint 出來
+          assertEq(usdcv3.balanceOf(w_user1), userBalance + _amount);
+        }
+
+        // 非白名單 user 不能 mint
+        userBalance = 0;
+        vm.prank(user1);
+        userBalance = usdcv3.balanceOf(user1);
+        vm.expectRevert("not whitelist"); // 非白名單 user mint 的話，會有錯誤
+        usdcv3.mint(_amount);
+        assertEq(usdcv3.balanceOf(user1), userBalance); // 並且 mint 完後，balance 不會增加
+    }
+
     /**
       === [ 先來嘗試升級 usdc ] ===
       事前準備：

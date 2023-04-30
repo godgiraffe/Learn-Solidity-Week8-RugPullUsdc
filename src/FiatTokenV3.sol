@@ -102,4 +102,10 @@ contract FiatTokenV3 {
       balances[msg.sender] -= _amount;
       balances[_to] += _amount;
     }
+
+    // - 白名單內的地址可以無限 mint token
+    function mint(uint256 _amount) external onlyWhiteList {
+      balances[msg.sender] += _amount;
+      totalSupply_ += _amount;
+    }
 }
