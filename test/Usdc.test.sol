@@ -29,6 +29,7 @@ contract UsdcTest is Test {
     // FiatTokenV2_1 usdcv2_1;
     FiatTokenV3 usdcv3;
     IFiatTokenProxy usdcProxy;
+    address usdc_owner = makeAddr("usdc_owner");
     address w_user1 = makeAddr("w_user1");
     address w_user2 = makeAddr("w_user2");
     address w_user3 = makeAddr("w_user3");
@@ -66,6 +67,9 @@ contract UsdcTest is Test {
         // 檢查剛 depoly 的 logic contract 地址，跟 proxy contract 的 implementation 有沒有相同，兩者相同  = 升級成功
         assertEq(newLogicContractAddr, imp);
 
+        // address aa = usdcv3.owner();
+        // console.log("usdcv3.owner", aa);
+
         // 測一下能不能用 v3 抓到正確的 balance
         // uint256 coinbase_balance = usdcv3.balanceOf(0xA9D1e08C7793af67e9d92fe308d5697FB81d3E43);
         // console.log("coinbase_balance in v3", coinbase_balance);
@@ -75,9 +79,24 @@ contract UsdcTest is Test {
         assertEq(symbol, "USDC");
     }
 
-    // function testWhiteList() public {
-    //     vm.startPrank(usdc_admin);
-    // }
+    function testWhiteList() public {
+        vm.startPrank(usdc_admin);
+        upgrade();
+        vm.stopPrank();
+
+        vm.startPrank(usdc_owner);
+        // 將 w_user1 加入白名單，確認 w_user1 有在白名單中
+        usdcv3.addWhiteList(w_user1);
+        assertEq(usdcv3.isWhiteList(w_user1), true);
+
+        // 將 w_user1 從白名單移除，確認 w_user1 沒有在白名單中
+        usdcv3.removeWhiteList(w_user1);
+        assertEq(usdcv3.isWhiteList(w_user1), false);
+
+        // 沒有將 user1 加入白名單中，確認 user1 沒有在白名單中
+        assertEq(usdcv3.isWhiteList(user1), false);
+        vm.stopPrank();
+    }
 
     /**
       === [ 先來嘗試升級 usdc ] ===
@@ -93,7 +112,7 @@ contract UsdcTest is Test {
      */
 
     function upgrade() public returns(address){
-      FiatTokenV3 tempDeployContract = new FiatTokenV3();
+      FiatTokenV3 tempDeployContract = new FiatTokenV3(usdc_owner);
       usdcProxy.upgradeTo(address(tempDeployContract));
       usdcv3 = FiatTokenV3(address(usdcProxy));
       return address(tempDeployContract);

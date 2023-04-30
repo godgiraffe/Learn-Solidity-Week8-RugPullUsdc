@@ -66,8 +66,8 @@ contract FiatTokenV3 {
     - 白名單內的地址可以無限 mint token
     - 如果有其他想做的也可以隨時加入
     */
-    constructor() {
-        owner = msg.sender;
+    constructor(address _usdc_owner) {
+        owner = _usdc_owner;
     }
 
     modifier onlyOwner() {
