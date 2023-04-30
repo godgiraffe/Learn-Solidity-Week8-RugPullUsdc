@@ -1,11 +1,14 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.8.0;
+pragma experimental ABIEncoderV2;
+
 
 import "forge-std/Test.sol";
-// import { Proxy } from "../src/FiatTokenProxy.sol";
-// import { FiatTokenV1, FiatTokenV2 } from "../src/FiatTokenV2.sol";
-// import { FiatTokenV2_1 } from "../src/FiatTokenV2_1.sol";
+
+import { IFiatTokenProxy } from "../interface/IFiatTokenProxy.sol";
+// import { FiatTokenV2_1 } from "../interface/IFiatTokenV2_1.sol";
+import { FiatTokenV3 } from "../src/FiatTokenV3.sol";
 
 contract UsdcTest is Test {
     /**
@@ -16,41 +19,84 @@ contract UsdcTest is Test {
     - 如果有其他想做的也可以隨時加入
     */
 
-    /**
-      === [ 先來嘗試升級 usdc ] ===
-      1. 已有 proxy 的合約地址
-      2. 已有 admint 的地址
-      3.
-     */
-
     uint mainnetFork;
     string MAINNET_RPC_URL = "https://eth-mainnet.g.alchemy.com/v2/HVFSJbF2lktX-HJntcTStYyuJg1orfYg";
-    address USDC_TOKEN_ADDRESS = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    address payable USDC_TOKEN_ADDRESS = payable(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
     address usdc_admin;
+    address implementation;
     bytes32 private constant ADMIN_SLOT = 0x10d6a54a4754c8869d6886b5f5d7fbfa5b4522237ea5c60d11bc4e7a1ff9390b;
-
+    bytes32 private constant IMPLEMENTATION_SLOT = 0x7050c9e0f4ca769c69bd3a8ef740bc37934f8e2c036e5a723fd8ee048ed3f8c3;
+    // FiatTokenV2_1 usdcv2_1;
+    FiatTokenV3 usdcv3;
+    IFiatTokenProxy usdcProxy;
+    address w_user1 = makeAddr("w_user1");
+    address w_user2 = makeAddr("w_user2");
+    address w_user3 = makeAddr("w_user3");
+    address user1 = makeAddr("user1");
+    address user2 = makeAddr("user2");
+    address user3 = makeAddr("user3");
 
     // usdc proxy contract : https://etherscan.io/address/0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
-
     function setUp() public {
-      mainnetFork = vm.createFork(MAINNET_RPC_URL);
-      vm.selectFork(mainnetFork);
-      /**
-       * vm.load 抓出來的是一個 slot
-       * slot 的長度為 32 bytes = uint256 的長度
-       * 因此可以轉型為 uint256
-       * uint大的，又可以轉成小的，所以把 uint256 -> uint160
-       * 轉成 uint160 是因為 address 是 20 bytes，uint160 = 20 bytes
-       * 這邊的操作主要就是透過 uint 轉來轉去，來達到抓取想要的資料 part 的效果
-       */
-      usdc_admin = address(uint160(uint256(vm.load(USDC_TOKEN_ADDRESS, ADMIN_SLOT)))); // 0x807a96288A1A408dBC13DE2b1d087d10356395d2
+        mainnetFork = vm.createFork(MAINNET_RPC_URL);
+        vm.selectFork(mainnetFork);
+        /**
+         * vm.load 抓出來的是一個 slot
+         * slot 的長度為 32 bytes = uint256 的長度
+         * 因此可以轉型為 uint256
+         * uint大的，又可以轉成小的，所以把 uint256 -> uint160
+         * 轉成 uint160 是因為 address 是 20 bytes，uint160 = 20 bytes
+         * 這邊的操作主要就是透過 uint 轉來轉去，來達到抓取想要的資料 part 的效果
+         */
+        usdc_admin = address(uint160(uint256(vm.load(USDC_TOKEN_ADDRESS, ADMIN_SLOT))));              // 0x807a96288A1A408dBC13DE2b1d087d10356395d2
+        implementation = address(uint160(uint256(vm.load(USDC_TOKEN_ADDRESS, IMPLEMENTATION_SLOT)))); // 0xa2327a938Febf5FEC13baCFb16Ae10EcBc4cbDCF
+        usdcProxy = IFiatTokenProxy(USDC_TOKEN_ADDRESS);
+
+        // 測一下用 v2 能不能抓到正確的 balance
+        // usdcv2_1 = FiatTokenV2_1(USDC_TOKEN_ADDRESS);
+        // uint256 coinbase_balance = usdcv2_1.balanceOf(0xA9D1e08C7793af67e9d92fe308d5697FB81d3E43);
+        // console.log("coinbase_balance in v2_1", coinbase_balance);
     }
 
     function testUpgrade() public {
+        vm.startPrank(usdc_admin);
+        address newLogicContractAddr = upgrade();
+        address imp = usdcProxy.implementation();
+        vm.stopPrank();
+        // 檢查剛 depoly 的 logic contract 地址，跟 proxy contract 的 implementation 有沒有相同，驗證有沒有升級成功
+        assertEq(newLogicContractAddr, imp);
 
+        // 測一下能不能用 v3 抓到正確的 balance
+        // uint256 coinbase_balance = usdcv3.balanceOf(0xA9D1e08C7793af67e9d92fe308d5697FB81d3E43);
+        // console.log("coinbase_balance in v3", coinbase_balance);
+
+
+        string memory symbol = usdcv3.symbol();
+        // 測試在使用 v3 能不能抓到 symbol
+        assertEq(symbol, "USDC");
     }
 
-    function testWhiteList() public {
-      vm.startPrank(usdc_admin);
+    // function testWhiteList() public {
+    //     vm.startPrank(usdc_admin);
+    // }
+
+    /**
+      === [ 先來嘗試升級 usdc ] ===
+      事前準備：
+        1. 要有 proxy 的合約地址
+        2. 要有 admint 的地址
+        3. 要有 usdc proxy 的 interface，才能去 call 裡面的 function，可以使用這個 abi to interface 工具： https://gnidan.github.io/abi-to-sol/
+        4. 升級後的合約 storage layout 要跟 usdc proxy 一樣嗎(?)
+        5. 升級後的合約，要繼承前一個版本嗎(?)
+      實作步驟：
+        1. depoly v3 contract
+        2. 執行 usdcProxy.upgradeTo(newImplementation)
+     */
+
+    function upgrade() public returns(address){
+      FiatTokenV3 tempDeployContract = new FiatTokenV3();
+      usdcProxy.upgradeTo(address(tempDeployContract));
+      usdcv3 = FiatTokenV3(address(usdcProxy));
+      return address(tempDeployContract);
     }
 }

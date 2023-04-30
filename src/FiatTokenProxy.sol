@@ -2,7 +2,7 @@
  *Submitted for verification at Etherscan.io on 2018-08-03
 */
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.4.24;
 
 // File: zos-lib/contracts/upgradeability/Proxy.sol
 
@@ -18,8 +18,7 @@ contract Proxy {
    * @dev Fallback function.
    * Implemented entirely in `_fallback`.
    */
-  // function () payable external {
-  fallback() external payable {
+  function () payable external {
     _fallback();
   }
 
