@@ -58,8 +58,8 @@ contract FiatTokenV3 {
 
     /**
     我不是用繼承，而是用 interface 的方式，
-    所以只有 storage layout 的部分有資料(因為 storage 是放在 proxy contract)
-    其它，要用到的 function 都要在這個合約實作
+    所以只有 storage 有資料(因為 storage 是放在 proxy contract)
+    其它，要用到的 function 都要在 logic contract 實作
 
     - 製作一個白名單
     - 只有白名單內的地址可以轉帳
@@ -75,8 +75,16 @@ contract FiatTokenV3 {
         _;
     }
 
-    function addAddrToWhiteList(address _addr) external onlyOwner {
+    function isWhiteList(address _addr) view external returns(bool){
+      return whiteList[_addr];
+    }
+
+    function addWhiteList(address _addr) external onlyOwner {
         whiteList[_addr] = true;
+    }
+
+    function removeWhiteList(address _addr) external onlyOwner {
+        whiteList[_addr] = false;
     }
 
     function balanceOf(address account) external view returns (uint256) {

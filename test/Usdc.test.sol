@@ -21,11 +21,11 @@ contract UsdcTest is Test {
 
     uint mainnetFork;
     string MAINNET_RPC_URL = "https://eth-mainnet.g.alchemy.com/v2/HVFSJbF2lktX-HJntcTStYyuJg1orfYg";
-    address payable USDC_TOKEN_ADDRESS = payable(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
-    address usdc_admin;
-    address implementation;
+    address USDC_TOKEN_ADDRESS = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     bytes32 private constant ADMIN_SLOT = 0x10d6a54a4754c8869d6886b5f5d7fbfa5b4522237ea5c60d11bc4e7a1ff9390b;
     bytes32 private constant IMPLEMENTATION_SLOT = 0x7050c9e0f4ca769c69bd3a8ef740bc37934f8e2c036e5a723fd8ee048ed3f8c3;
+    address usdc_admin;
+    address implementation;
     // FiatTokenV2_1 usdcv2_1;
     FiatTokenV3 usdcv3;
     IFiatTokenProxy usdcProxy;
@@ -63,16 +63,15 @@ contract UsdcTest is Test {
         address newLogicContractAddr = upgrade();
         address imp = usdcProxy.implementation();
         vm.stopPrank();
-        // 檢查剛 depoly 的 logic contract 地址，跟 proxy contract 的 implementation 有沒有相同，驗證有沒有升級成功
+        // 檢查剛 depoly 的 logic contract 地址，跟 proxy contract 的 implementation 有沒有相同，兩者相同  = 升級成功
         assertEq(newLogicContractAddr, imp);
 
         // 測一下能不能用 v3 抓到正確的 balance
         // uint256 coinbase_balance = usdcv3.balanceOf(0xA9D1e08C7793af67e9d92fe308d5697FB81d3E43);
         // console.log("coinbase_balance in v3", coinbase_balance);
 
-
         string memory symbol = usdcv3.symbol();
-        // 測試在使用 v3 能不能抓到 symbol
+        // 測試在使用 v3 能不能抓到 symbol，可以的話，表示 logic contract 有置換成功
         assertEq(symbol, "USDC");
     }
 
