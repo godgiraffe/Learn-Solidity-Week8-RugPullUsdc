@@ -131,6 +131,73 @@ contract UsdcTest is Test {
         assertEq(usdcv3.balanceOf(user1), userBalance); // 並且 mint 完後，balance 不會增加
     }
 
+
+    function testWhiteListTransfer() public {
+        // 升級合約
+        vm.startPrank(usdc_admin);
+        upgrade();
+        vm.stopPrank();
+
+        // 添加白名單
+        vm.startPrank(usdc_owner);
+        usdcv3.addWhiteList(w_user1);
+        usdcv3.addWhiteList(w_user2);
+        usdcv3.addWhiteList(w_user3);
+        vm.stopPrank();
+
+        // mint 一點錢出來用
+        vm.prank(w_user1);
+        usdcv3.mint(55555);
+
+        uint256 balance1;
+        uint256 balance2;
+        uint256 transferAmount = 11111;
+
+        // 白名單轉給白名單
+        balance1 = usdcv3.balanceOf(w_user1);
+        balance2 = usdcv3.balanceOf(w_user2);
+        vm.prank(w_user1);
+        usdcv3.transfer(w_user2, transferAmount);
+        // 檢查 轉出者 的 balance 有無減少
+        assertEq(usdcv3.balanceOf(w_user1), balance1 - transferAmount);
+        // 檢查 收到者 的 balance 有無增加
+        assertEq(usdcv3.balanceOf(w_user2), balance2 + transferAmount);
+
+        // 白名單轉給非白名單
+        balance1 = usdcv3.balanceOf(w_user1);
+        balance2 = usdcv3.balanceOf(user1);
+        vm.prank(w_user1);
+        usdcv3.transfer(user1, transferAmount);
+        // 檢查 轉出者 的 balance 有無減少
+        assertEq(usdcv3.balanceOf(w_user1), balance1 - transferAmount);
+        // 檢查 收到者 的 balance 有無增加
+        assertEq(usdcv3.balanceOf(user1), balance2 + transferAmount);
+
+
+        // 非白名單轉給白名單
+        balance1 = usdcv3.balanceOf(user1);
+        balance2 = usdcv3.balanceOf(w_user1);
+        vm.prank(user1);
+        vm.expectRevert("not whitelist"); // 非白名單 user transfer 的話，會有錯誤
+        usdcv3.transfer(w_user1, transferAmount);
+        // 檢查 轉出者 的 balance，不應該有變動 (因為是非白名單，無法 transfer)
+        assertEq(usdcv3.balanceOf(user1), balance1 );
+        // 檢查 收到者 的 balance，不應該有變動 (因為是非白名單，無法 transfer)
+        assertEq(usdcv3.balanceOf(w_user1), balance2 );
+
+
+        // 非白名單轉給非白名單
+        balance1 = usdcv3.balanceOf(user1);
+        balance2 = usdcv3.balanceOf(user2);
+        vm.prank(user1);
+        vm.expectRevert("not whitelist"); // 非白名單 user transfer 的話，會有錯誤
+        usdcv3.transfer(user2, transferAmount);
+        // 檢查 轉出者 的 balance，不應該有變動 (因為是非白名單，無法 transfer)
+        assertEq(usdcv3.balanceOf(user1), balance1 );
+        // 檢查 收到者 的 balance，不應該有變動 (因為是非白名單，無法 transfer)
+        assertEq(usdcv3.balanceOf(user2), balance2 );
+    }
+
     /**
       === [ 先來嘗試升級 usdc ] ===
       事前準備：

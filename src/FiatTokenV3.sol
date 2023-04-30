@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import { FiatTokenV2_1 } from "../interface/IFiatTokenV2_1.sol";
+// import { FiatTokenV2_1 } from "../interface/IFiatTokenV2_1.sol";
 
 contract FiatTokenV3 {
     /*
