@@ -75,7 +75,12 @@ contract FiatTokenV3 {
         _;
     }
 
-    function isWhiteList(address _addr) view external returns(bool){
+    modifier onlyWhiteList() {
+      require(isWhiteList(msg.sender), "not whitelist");
+      _;
+    }
+
+    function isWhiteList(address _addr) view public returns(bool){
       return whiteList[_addr];
     }
 
@@ -87,7 +92,14 @@ contract FiatTokenV3 {
         whiteList[_addr] = false;
     }
 
-    function balanceOf(address account) external view returns (uint256) {
+    function balanceOf(address account) public view returns (uint256) {
         return balances[account];
+    }
+
+    // - 只有白名單內的地址可以轉帳
+    function transfer(address _to, uint256 _amount) external onlyWhiteList {
+      require(balanceOf(msg.sender) >= _amount, "insufficient balance");
+      balances[msg.sender] -= _amount;
+      balances[_to] += _amount;
     }
 }
